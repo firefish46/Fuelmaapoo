@@ -1,0 +1,44 @@
+node_modules
+# --- SYSTEM FILES ---
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+
+# --- ENVIRONMENT & SECRETS ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# --- NODE.JS / JAVASCRIPT ---
+node_modules/
+dist/
+build/
+.next/
+.vercel/
+.npm
+.eslintcache
+
+
+
+# --- C++ / COMPILER OUTPUT ---
+*.o
+*.obj
+*.exe
+*.out
+*.app
+
+# --- IDE & EDITORS ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+

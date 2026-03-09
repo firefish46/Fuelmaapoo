@@ -1,0 +1,264 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+:root {
+  --bg:         #060c14;
+  --surface:    #0b1624;
+  --surface2:   #0f1e30;
+  --surface3:   #132436;
+  --border:     #1a3a5c;
+  --border2:    #224a70;
+  --accent:     #00d4ff;
+  --accent-dim: rgba(0,212,255,0.12);
+  --accent2:    #f0a500;
+  --accent2-dim:rgba(240,165,0,0.12);
+  --danger:     #ff3b5c;
+  --danger-dim: rgba(255,59,92,0.10);
+  --success:    #00e676;
+  --success-dim:rgba(0,230,118,0.10);
+  --warning:    #ffd600;
+  --warning-dim:rgba(255,214,0,0.10);
+  --text:       #c8dce8;
+  --text2:      #6a90a8;
+  --text3:      #3a6080;
+  --glow:       0 0 24px rgba(0,212,255,0.25);
+  --glow2:      0 0 24px rgba(240,165,0,0.25);
+  --radius:     8px;
+  --radius-sm:  4px;
+  --font-head:  'Rajdhani', sans-serif;
+  --font-mono:  'Share Tech Mono', monospace;
+  --font-body:  'Exo 2', sans-serif;
+  --transition: 0.18s ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(0,80,140,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 85%, rgba(0,40,80,0.12) 0%, transparent 55%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,100,160,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,100,160,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+#__next { position: relative; z-index: 1; min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; font-size: inherit; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes barFill { from { width: 0; } }
+/* ========================
+   BD REGISTRATION HINT
+======================== */
+.reg-hint {
+  margin-top: 6px;
+  padding: 7px 12px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  animation: fadeIn 0.2s ease;
+}
+.reg-hint.class-hint {
+  background: rgba(0, 230, 118, 0.07);
+  border: 1px solid rgba(0, 230, 118, 0.25);
+}
+.reg-hint.parse-hint {
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  color: var(--text2);
+}
+.reg-hint-icon { font-size: 1.2rem; flex-shrink: 0; }
+.reg-hint-class { color: var(--success); font-weight: 600; }
+.reg-hint-cc { color: var(--text2); margin-left: 6px; }
+.reg-hint-maps { color: var(--text2); font-size: 0.72rem; margin-top: 2px; }
+.reg-hint-maps strong { color: var(--accent); }
+.reg-hint-district { color: var(--text); font-weight: 600; }
+.reg-hint-sep { color: var(--text3); margin: 0 6px; }
+
+.auto-detect-label {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--success);
+}
+
+/* ========================
+   FORMAT GUIDE BOX
+======================== */
+.format-guide {
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text2);
+  line-height: 1.8;
+}
+.format-guide strong { color: var(--accent); letter-spacing: 1px; }
+.format-guide .example { color: var(--text); }
+
+/* ========================
+   BRTA REFERENCE TABLE
+======================== */
+.brta-ref-table td:first-child {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+/* ========================
+   FADE IN ANIMATION
+======================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Container spacing */
+.form-group {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Label styling */
+.form-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+/* Select input styling */
+.form-control {
+  padding: 0.625rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #1f2937;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+/* Focus state for better UX */
+.form-control:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.btn-primarycheck{
+  background: var(--accent2-dim);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 20px rgba(240,165,0,0.18);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 3px;
+    transition: all var(--transition);
+    cursor: pointer;
+}
+.btn-primary:hover{
+  background: var(--accent2-dim);
+}
+/* Auto-detect badge styling */
+.auto-detect-label {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  animation: fadeIn 0.2s ease;
+}
+/* ========================
+   SELECT DROPDOWN FIX
+======================== */
+input.form-control {
+  background-color: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236a90a8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+input.form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.08);
+  outline: none;
+}
+
+select.form-control option {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+/* Fix for Windows/Chrome which forces white bg on select */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  select.form-control {
+    background-color: var(--bg) !important;
+  }
+}
+/* Smooth appearance for the auto-detect message */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+select.filter-control {
+  background-color: var(--surface2);
+  color: var(--text);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236a90a8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+select.filter-control option {
+  background-color: var(--surface);
+  color: var(--text);
+}
