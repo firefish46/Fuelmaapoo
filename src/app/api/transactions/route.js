@@ -4,21 +4,15 @@ import Transaction from '@/lib/models/Transaction';
 import FuelLimit from '@/lib/models/FuelLimit';
 import Pump from '@/lib/models/Pump';
 import { requireAuth } from '@/lib/auth';
-import { validateRegistration } from '@/lib/bdRegistration';
 import { haversineKm, checkDistanceAllowance } from '@/lib/distance';
-
-// Simple normalizer — NO stripping, just uppercase + collapse whitespace/dashes
-function normalizeReg(reg) {
-  if (!reg) return '';
-  return reg.toUpperCase().trim().replace(/[-\s]+/g, ' ');
-}
+import { normalizeReg } from '@/lib/utils';
+import { validateRegistration } from '@/lib/bdRegistration';
 
 export async function GET(request) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   await connectDB();
-
   const { searchParams } = new URL(request.url);
 
   const filter = {};
@@ -59,14 +53,23 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     await connectDB();
- 
+
     const body = await request.json();
     const { vehicleReg, ownerName, vehicleClass, amountLiters, pumpId } = body;
 
     if (!vehicleReg || !vehicleClass || !amountLiters || !pumpId)
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
 
-    // Fix: compare as strings
+    // Validate registration format
+    const cleanReg = normalizeReg(vehicleReg);
+    const regValidation = validateRegistration(cleanReg);
+    if (!regValidation.isValid) {
+      return NextResponse.json(
+        { error: `Invalid registration: ${regValidation.error}` },
+        { status: 400 }
+      );
+    }
+
     if (user.role === 'pump' && user.pumpId && user.pumpId.toString() !== pumpId.toString())
       return NextResponse.json({ error: 'Not authorized for this pump' }, { status: 403 });
 
@@ -78,14 +81,10 @@ export async function POST(request) {
 
     const dailyLimit = limitDoc.dailyLimitLiters;
 
-    // THE KEY FIX: use same normalizer for both storing and querying
-    const cleanReg = normalizeReg(vehicleReg);
-
     const now        = new Date();
     const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
     const todayEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
 
-    // Use find+reduce instead of aggregate to avoid ObjectId casting issues
     const todayTxns = await Transaction.find({
       vehicleReg: cleanReg,
       status:     'valid',
@@ -96,7 +95,7 @@ export async function POST(request) {
     const remaining       = dailyLimit - usedToday;
     const requestedAmount = parseFloat(amountLiters);
 
-    console.log(`[DISPENSE] reg="${cleanReg}" usedToday=${usedToday} limit=${dailyLimit} remaining=${remaining} requested=${requestedAmount} todayTxns=${todayTxns.length}`);
+    console.log(`[DISPENSE] reg="${cleanReg}" used=${usedToday} limit=${dailyLimit} remaining=${remaining} requested=${requestedAmount} txns=${todayTxns.length}`);
 
     // Distance allowance
     let distanceAllowance = null;
@@ -149,7 +148,7 @@ export async function POST(request) {
     }
 
     const txn = await Transaction.create({
-      vehicleReg:      cleanReg,   // ← always store normalized
+      vehicleReg:      cleanReg,
       ownerName:       ownerName || 'N/A',
       vehicleClass,
       amountLiters:    effectiveAmount,
