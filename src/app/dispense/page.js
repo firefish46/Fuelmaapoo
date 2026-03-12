@@ -1,227 +1,408 @@
 'use client';
-import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
-import { useAuth } from '@/lib/AuthContext';
-import { useToast } from '@/lib/ToastContext';
+import { useState, useEffect, useRef } from 'react';
+import AppShell from '../../components/layout/AppShell';
+import { useAuth } from '../../lib/AuthContext';
+import { useToast } from '../../lib/ToastContext';
+// Change import line:
+import { parseRegistration, getInputHint, validateRegistration } from '../../lib/bdRegistration';
+import { normalizeReg } from '../../lib/utils';
 import ui from '@/styles/UI.module.css';
-import { parseRegistration } from '../../lib/bdRegistration';
-
-const CLASS_ICONS = {
-  'Motorcycle':'🏍','Private Car':'🚗','Pickup / SUV':'🚙','Microbus':'🚐',
-  'Minibus':'🚌','Bus':'🚌','Light Truck':'🚛','Heavy Truck':'🚚',
-  'Agricultural':'🚜','Emergency':'🚑',
+const VEHICLE_CLASSES = [
+  'Motorcycle', 'Private Car', 'Pickup / SUV', 'Microbus',
+  'Minibus', 'Bus', 'Light Truck', 'Heavy Truck', 'Agricultural', 'Emergency'
+];
+const ICONS = {
+  'Motorcycle':'🏍', 'Private Car':'🚗', 'Pickup / SUV':'🚙', 'Microbus':'🚐',
+  'Minibus':'🚌', 'Bus':'🚌', 'Light Truck':'🚛', 'Heavy Truck':'🚚',
+  'Agricultural':'🚜', 'Emergency':'🚑'
 };
 
 export default function DispensePage() {
   const { user } = useAuth();
   const toast = useToast();
-  const [limits, setLimits] = useState([]);
   const [pumps, setPumps] = useState([]);
-  const [form, setForm] = useState({ vehicleReg:'', ownerName:'', vehicleClass:'', amountLiters:'', pumpId:'' });
+  const [form, setForm] = useState({
+    vehicleReg: '', vehicleClass: '', amountLiters: '', pumpId: '', ownerName: ''
+  });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [alert, setAlert] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+  const [error, setError] = useState('');
+const [regError, setRegError] = useState('');
+  // Detection state
+  const [detecting, setDetecting]       = useState(false);   // spinner while fetching history
+  const [detectedFrom, setDetectedFrom] = useState(null);    // 'reg' | 'history' | null
+  const [hint, setHint]                 = useState(null);    // live BRTA hint while typing
+  const debounceRef = useRef(null);
 
-useEffect(() => {
-  if (form.vehicleReg.length >= 5) {
-    // First try to parse from reg number directly
-    const parsed = parseRegistration(form.vehicleReg);
-    if (parsed?.isValid && parsed.suggestedSystemClass) {
-      setForm(f => ({ ...f, vehicleClass: f.vehicleClass || parsed.suggestedSystemClass }));
-      return;
-    }
-    // Fallback: check transaction history
-    fetch(`/api/vehicles/check?reg=${form.vehicleReg}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.detectedClass) setForm(f => ({ ...f, vehicleClass: f.vehicleClass || d.detectedClass }));
-      })
-      .catch(() => {});
-  }
-}, [form.vehicleReg]);
-
-  // Auto-detect class from history
   useEffect(() => {
-    if (form.vehicleReg.length >= 4) {
-      const t = setTimeout(async () => {
-        const res = await fetch(`/api/vehicles/check?reg=${form.vehicleReg}`);
-        if (res.ok) {
-          const d = await res.json();
-          if (d.detectedClass && !form.vehicleClass) {
-            setForm(p => ({ ...p, vehicleClass: d.detectedClass }));
-          }
-        }
-      }, 500);
-      return () => clearTimeout(t);
+    async function loadPumps() {
+      const res = await fetch('/api/pumps');
+      if (!res.ok) return;
+    const data = await res.json();
+if (!res.ok) {
+  setError(data.error || `Server error ${res.status}`);
+  console.error('[DISPENSE]', res.status, data);
+  return;
+}
+      const allPumps = data.pumps || [];
+      setPumps(allPumps);
+      if (user?.role === 'pump' && user?.pumpId) {
+        setForm(f => ({ ...f, pumpId: user.pumpId }));
+      } else if (allPumps.length > 0) {
+        setForm(f => ({ ...f, pumpId: allPumps[0]._id }));
+      }
     }
+    if (user) loadPumps();
+  }, [user]);
+
+  // Live hint while typing (no debounce needed — pure local parse)
+  useEffect(() => {
+    setHint(getInputHint(form.vehicleReg));
   }, [form.vehicleReg]);
 
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    const { vehicleReg, vehicleClass, amountLiters, pumpId } = form;
-    if (!vehicleReg || !vehicleClass || !amountLiters || !pumpId) {
-      setAlert({ type:'error', msg:'Please fill all required fields.' }); return;
+useEffect(() => {
+  if (!form.vehicleReg || form.vehicleReg.length < 4) {
+    setDetectedFrom(null);
+    setRegError('');
+    setForm(f => ({ ...f, vehicleClass: '' }));
+    return;
+  }
+
+  // Always run strict validation
+  const validation = validateRegistration(form.vehicleReg);
+  if (!validation.isValid) {
+    setRegError(validation.error || 'Invalid registration format');
+  } else {
+    setRegError('');
+  }
+
+  // Try full parse for class detection
+  const parsed = parseRegistration(form.vehicleReg);
+  if (parsed?.isValid && parsed.suggestedSystemClass) {
+    setForm(f => ({ ...f, vehicleClass: parsed.suggestedSystemClass }));
+    setDetectedFrom('reg');
+    setDetecting(false);
+    return;
+  }
+
+  const h = getInputHint(form.vehicleReg);
+  if (h?.systemClass) {
+    setForm(f => ({ ...f, vehicleClass: h.systemClass }));
+    setDetectedFrom('reg');
+    setDetecting(false);
+    return;
+  }
+
+  setDetecting(true);
+  clearTimeout(debounceRef.current);
+  debounceRef.current = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/vehicles/check?reg=${form.vehicleReg}`);
+      const d   = await res.json();
+      if (d.detectedClass) {
+        setForm(f => ({ ...f, vehicleClass: d.detectedClass }));
+        setDetectedFrom('history');
+      } else {
+        setDetectedFrom(null);
+        setForm(f => ({ ...f, vehicleClass: '' }));
+      }
+    } catch {}
+    finally { setDetecting(false); }
+  }, 600);
+
+  return () => clearTimeout(debounceRef.current);
+}, [form.vehicleReg]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.vehicleReg || !form.vehicleClass || !form.amountLiters || !form.pumpId) {
+      setError('Please fill all required fields');
+      return;
     }
-    setAlert(null); setLoading(true); setResult(null);
+    if (!form.vehicleClass) {
+      setError('Vehicle class could not be detected. Please enter a valid registration number.');
+      return;
+    }
+    setLoading(true); setError(''); setReceipt(null);
     try {
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vehicleReg: vehicleReg.toUpperCase(),
-          ownerName: form.ownerName || 'N/A',
-          vehicleClass,
-          amountLiters: parseFloat(amountLiters),
-          pumpId,
-        }),
+        body: JSON.stringify({ ...form, amountLiters: parseFloat(form.amountLiters) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setResult(data);
+      if (!res.ok) { setError(data.error); return; }
+      setReceipt(data);
       if (data.status === 'valid') {
-        toast(`${amountLiters}L dispensed to ${vehicleReg.toUpperCase()}`, 'success');
-        setForm(p => ({ ...p, vehicleReg:'', ownerName:'', vehicleClass:'', amountLiters:'' }));
+        toast(`${data.effectiveAmount || form.amountLiters}L dispensed to ${form.vehicleReg}`, 'success');
       } else {
         toast(`Transaction rejected: ${data.rejectionReason}`, 'error');
       }
-    } catch(err) {
-      setAlert({ type:'error', msg: err.message });
-    } finally { setLoading(false); }
-  };
+      setForm(f => ({ ...f, vehicleReg: '', ownerName: '', amountLiters: '', vehicleClass: '' }));
+      setDetectedFrom(null);
+    } catch { setError('Network error'); }
+    finally { setLoading(false); }
+  }
 
   const availablePumps = user?.role === 'pump'
     ? pumps.filter(p => p._id === user.pumpId)
     : pumps;
+  const selectedPump = pumps.find(p => p._id === form.pumpId);
 
-  const txn = result?.transaction;
-  const pct = txn ? Math.min((txn.dailyTotalAfter / txn.dailyLimit) * 100, 100) : 0;
-  const barColor = pct >= 100 ? ui.fuelRed : pct >= 75 ? ui.fuelYellow : ui.fuelGreen;
+  // Dispense button is only enabled when class is resolved
+// Block dispense if reg is invalid
+const canDispense = form.vehicleReg && form.vehicleClass && form.amountLiters 
+  && form.pumpId && !detecting && !regError;
 
   return (
     <AppShell>
-      <div className={ui.pageTitle}>
-        <span className={ui.pageTitleText}>Dispense Fuel</span>
-        <span className={ui.pageTitleSub}>Record Transaction</span>
+      <div className="page-header">
+        <div>
+          <div className="page-title"><span className="pt-icon">⛽</span> DISPENSE FUEL</div>
+          <div className="page-subtitle">Record Fuel Transaction</div>
+        </div>
       </div>
 
-      <div className={ui.card}>
-        <div className={ui.cardTitle}><span className={`${ui.cardDot} ${ui.cardDotAmber}`} />Fuel Dispensing Form</div>
+      <div className="card">
+        <div className="card-title"><div className="ct-dot amber" />FUEL DISPENSING FORM</div>
+
+        {user?.role === 'pump' && selectedPump && (
+          <div className="pump-banner">
+            🏪 Assigned Station: <strong>{selectedPump.name}</strong>
+            <span className="pump-banner-loc"> — {selectedPump.location}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <div className={ui.formGrid}>
-            <div className={ui.formGroup}>
-              <label className={ui.label}>Vehicle Registration No. *</label>
-              <input
-                className={ui.input}
-                value={form.vehicleReg}
-                onChange={e => setForm(p => ({ ...p, vehicleReg: e.target.value.toUpperCase() }))}
-                placeholder="e.g. ABC-1234"
-                style={{textTransform:'uppercase'}}
-              />
-            </div>
-            <div className={ui.formGroup}>
-              <label className={ui.label}>Vehicle Class *</label>
-              <select className={ui.select} value={form.vehicleClass} onChange={e => setForm(p => ({ ...p, vehicleClass: e.target.value }))}>
-                <option value="">-- Select Class --</option>
-                {limits.map(l => (
-                  <option key={l.vehicleClass} value={l.vehicleClass}>
-                    {CLASS_ICONS[l.vehicleClass]||'🚗'} {l.vehicleClass} (Limit: {l.dailyLimitLiters}L)
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={ui.formGroup}>
-              <label className={ui.label}>Fuel Amount (Liters) *</label>
-              <input
-                className={ui.input}
-                type="number"
-                value={form.amountLiters}
-                onChange={e => setForm(p => ({ ...p, amountLiters: e.target.value }))}
-                placeholder="e.g. 10"
-                min="0.1" step="0.1"
-              />
-            </div>
-            <div className={ui.formGroup}>
-              <label className={ui.label}>Pump Station *</label>
-              <select
-                className={ui.select}
-                value={form.pumpId}
-                onChange={e => setForm(p => ({ ...p, pumpId: e.target.value }))}
-                disabled={user?.role === 'pump'}
-              >
-                <option value="">-- Select Pump --</option>
-                {availablePumps.map(p => (
-                  <option key={p._id} value={p._id}>{p.name} {p.status === 'offline' ? '(Offline)' : ''}</option>
-                ))}
-              </select>
-            </div>
-            <div className={`${ui.formGroup} ${ui.formGroupFull}`}>
-              <label className={ui.label}>Owner / Driver Name (Optional)</label>
-              <input
-                className={ui.input}
-                value={form.ownerName}
-                onChange={e => setForm(p => ({ ...p, ownerName: e.target.value }))}
-                placeholder="Vehicle owner or driver name"
-              />
-            </div>
-          </div>
-          <button type="submit" className={`${ui.btn} ${ui.btnAmber}`} disabled={loading} style={{marginTop:'0.5rem'}}>
-            {loading ? <span className={ui.spinner} style={{borderColor:'rgba(0,0,0,0.3)',borderTopColor:'#000'}} /> : '⛽'}
-            {loading ? 'Processing...' : 'Record Fuel Dispensing'}
-          </button>
-        </form>
-        {alert && <div className={`${ui.alert} ${alert.type==='error'?ui.alertError:ui.alertSuccess}`}>{alert.msg}</div>}
-      </div>
+          <div className="form-grid" style={{ marginBottom: '1rem' }}>
 
-      {/* Receipt */}
-      {result && txn && (
-        <div className={ui.card} style={{
-          borderColor: result.status==='valid' ? 'rgba(0,230,118,0.3)' : 'rgba(255,59,92,0.3)',
-          background: result.status==='valid' ? 'rgba(0,230,118,0.04)' : 'rgba(255,59,92,0.04)',
-        }}>
-          <div className={ui.cardTitle}>
-            <span className={result.status==='valid' ? `${ui.cardDot} ${ui.cardDotGreen}` : `${ui.cardDot}`} style={result.status!=='valid'?{background:'var(--danger)',boxShadow:'0 0 6px var(--danger)'}:{}} />
-            Transaction Receipt
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'1.2rem'}}>
-            <span style={{fontSize:'1.8rem'}}>{result.status==='valid'?'✅':'❌'}</span>
-            <div>
-              <div style={{fontFamily:'var(--font-head)',fontSize:'1.1rem',fontWeight:'700',letterSpacing:'1px',color:result.status==='valid'?'var(--success)':'var(--danger)'}}>
-                {result.status==='valid' ? 'TRANSACTION APPROVED' : 'TRANSACTION REJECTED'}
+            {/* Vehicle Reg — full width */}
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="form-label">Vehicle Registration No. *</label>
+              <div className="input-wrap">
+                <span className="input-icon">🚗</span>
+                <input
+                  className="form-control"
+                  value={form.vehicleReg}
+                  onChange={e => {
+  const raw = e.target.value.toUpperCase();
+  const normalized = raw.length >= 6 ? normalizeReg(raw) : raw;
+  setForm(f => ({
+    ...f,
+    vehicleReg: normalized,
+    vehicleClass: '',
+  }));
+}}
+                  placeholder="e.g. Dhaka Metro-B-11-1234"
+                  style={{ textTransform: 'uppercase' }}
+                  autoComplete="off"
+                />
               </div>
-              {result.rejectionReason && (
-                <div style={{fontFamily:'var(--font-mono)',fontSize:'0.76rem',color:'var(--danger)',marginTop:'2px'}}>{result.rejectionReason}</div>
+
+              {/* Live BRTA hint while typing */}
+              {hint && !form.vehicleClass && (
+                <div className="reg-hint class-hint">
+                  <span className="reg-hint-icon">{hint.icon}</span>
+                  <div>
+                    <span className="reg-hint-class">
+                      Class {hint.classCode}: {hint.label}
+                    </span>
+                    {hint.cc && <span className="reg-hint-cc">({hint.cc})</span>}
+                    <div className="reg-hint-maps">
+                      → Will map to: <strong>{hint.systemClass}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Detecting spinner */}
+              {detecting && (
+                <div className="detect-status detecting">
+                  <div className="spinner" style={{ width: 14, height: 14 }} />
+                  Detecting vehicle class from history...
+                </div>
+              )}
+
+              {/* Detected result */}
+              {!detecting && form.vehicleClass && (
+                <div className="detect-status detected">
+                  <span>{ICONS[form.vehicleClass]}</span>
+                  <span>
+                    <strong>{form.vehicleClass}</strong>
+                    <span className="detect-source">
+                      {detectedFrom === 'reg'
+                        ? ' — detected from registration number'
+                        : ' — detected from transaction history'}
+                    </span>
+                  </span>
+                </div>
+              )}
+
+              {/* Not detected */}
+              {!detecting && form.vehicleReg.length >= 5 && !form.vehicleClass && (
+                <div className="detect-status not-found">
+                  ⚠ Could not auto-detect class — select manually below
+                </div>
               )}
             </div>
+            {regError && form.vehicleReg.length >= 6 && (
+  <div className="detect-status not-found">
+    🚫 {regError}
+  </div>
+)}
+
+{!regError && form.vehicleReg.length >= 6 && (
+  <div style={{
+    marginTop: 5, fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
+    color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 5,
+  }}>
+    ✓ Valid registration format
+  </div>
+)}
+            {/* Vehicle Class — shown always, locked when auto-detected */}
+            <div className="form-group">
+              <label className="form-label">
+                Vehicle Class *
+                {form.vehicleClass && detectedFrom && (
+                  <button
+                    type="button"
+                    className="override-btn"
+                    onClick={() => { setForm(f => ({ ...f, vehicleClass: '' })); setDetectedFrom(null); }}
+                  >
+                    ✎ Override
+                  </button>
+                )}
+              </label>
+            <select
+             className={`form-control ${form.vehicleClass ? 'class-locked' : ''}`}
+               value={form.vehicleClass}
+                     onChange={e => {
+                    setForm(f => ({ ...f, vehicleClass: e.target.value }));
+                     setDetectedFrom('manual');
+  }}
+>
+  <option value="">— Auto-detecting… or select manually —</option>
+  {VEHICLE_CLASSES.map(c => (
+    <option key={c} value={c}>{ICONS[c]} {c}</option>
+  ))}
+</select>
+            </div>
+
+            {/* Fuel Amount */}
+            <div className="form-group">
+              <label className="form-label">Fuel Amount (Liters) *</label>
+              <div className="input-wrap">
+                <span className="input-icon">🛢</span>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={form.amountLiters}
+                  onChange={e => setForm(f => ({ ...f, amountLiters: e.target.value }))}
+                  placeholder="e.g. 10"
+                  min="0.1"
+                  step="0.1"
+                  disabled={!form.vehicleClass}
+                />
+              </div>
+            </div>
+
+            {/* Pump Station */}
+            <div className="form-group">
+              <label className="form-label">Pump Station *</label>
+              <select
+                className="form-control"
+                value={form.pumpId}
+                onChange={e => setForm(f => ({ ...f, pumpId: e.target.value }))}
+                disabled={user?.role === 'pump'}
+              >
+                <option value="">— Select Pump —</option>
+                {availablePumps.map(p => (
+                  <option key={p._id} value={p._id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Owner Name */}
+            <div className="form-group">
+              <label className="form-label">Owner Name (Optional)</label>
+              <input
+                className="form-control"
+                value={form.ownerName}
+                onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))}
+                placeholder="Vehicle owner name"
+                disabled={!form.vehicleClass}
+              />
+            </div>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:'0.7rem',marginBottom:'1rem'}}>
+
+          {error && <div className="alert alert-error" style={{ marginBottom: '0.8rem' }}>{error}</div>}
+
+          {/* Dispense button — disabled until class is resolved */}
+          < button
+            type="submit"
+            className="btn btn-amber"
+            disabled={!canDispense || loading}
+            style={{ position: 'relative' }}
+          >
+            {loading ? '⏳ Processing...' : !form.vehicleClass ? '⚠ Waiting for vehicle class...' : '⛽ RECORD FUEL DISPENSING'}
+          </button>
+
+          {!form.vehicleClass && form.vehicleReg.length >= 3 && (
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.72rem',
+              color: 'var(--text2)', marginTop: '0.5rem'
+            }}>
+              Enter full registration number to auto-detect class, or select manually above.
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* RECEIPT */}
+      {receipt && (
+        <div className={`receipt ${receipt.status === 'rejected' ? 'rejected' : ''}`}>
+          <div className="receipt-title">
+            {receipt.status === 'valid' ? '✅ TRANSACTION SUCCESSFUL' : '❌ TRANSACTION REJECTED'}
+          </div>
+          {receipt.status === 'rejected' && receipt.rejectionReason && (
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.8rem',
+              color: 'var(--danger)', marginBottom: '0.8rem'
+            }}>
+              Reason: {receipt.rejectionReason}
+            </div>
+          )}
+          <div className="receipt-grid">
             {[
-              { label:'Transaction ID', value: txn._id?.slice(-8).toUpperCase(), accent:'blue' },
-              { label:'Status', value: txn.status.toUpperCase(), accent: txn.status==='valid'?'green':'red' },
-              { label:'Vehicle Reg.', value: txn.vehicleReg },
-              { label:'Vehicle Class', value: `${CLASS_ICONS[txn.vehicleClass]||'🚗'} ${txn.vehicleClass}` },
-              { label:'Amount', value: `${txn.amountLiters} L`, accent:'amber' },
-              { label:'Pump Station', value: txn.pumpName },
-              { label:'Operator', value: txn.operatorName },
-              { label:'Timestamp', value: new Date(txn.createdAt).toLocaleTimeString('en-GB') },
-            ].map(item => (
-              <div key={item.label} style={{background:'rgba(255,255,255,0.03)',borderRadius:'4px',padding:'10px 12px'}}>
-                <div style={{fontFamily:'var(--font-mono)',fontSize:'0.62rem',color:'var(--text2)',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'3px'}}>{item.label}</div>
-                <div style={{
-                  fontFamily:'var(--font-mono)',fontSize:'0.86rem',fontWeight:'700',
-                  color: item.accent==='blue'?'var(--accent)':item.accent==='amber'?'var(--accent2)':item.accent==='green'?'var(--success)':item.accent==='red'?'var(--danger)':'var(--text)',
-                }}>{item.value}</div>
+              ['Transaction ID',    receipt.transaction?._id],
+              ['Vehicle Reg.',      receipt.transaction?.vehicleReg],
+              ['Vehicle Class',     receipt.transaction?.vehicleClass],
+              ['Amount Dispensed',  `${receipt.transaction?.amountLiters}L`],
+              ['Pump Station',      receipt.transaction?.pumpName],
+              ['Operator',          receipt.transaction?.operatorName],
+              ['Daily Usage After', receipt.transaction
+                ? `${receipt.transaction.dailyTotalAfter?.toFixed(1)}L / ${receipt.transaction.dailyLimit}L`
+                : '-'],
+              ['Timestamp',         new Date(receipt.transaction?.createdAt).toLocaleString()],
+            ].map(([label, val]) => (
+              <div className="receipt-item" key={label}>
+                <div className="receipt-label">{label}</div>
+                <div className="receipt-value">{val}</div>
               </div>
             ))}
           </div>
-          <div className={ui.fuelBarWrap}>
-            <div className={ui.fuelBarLabels}>
-              <span>Daily usage after transaction</span>
-              <span>{txn.dailyTotalAfter?.toFixed(1)} / {txn.dailyLimit} L</span>
+          {receipt.distanceAllowance && (
+            <div className={`distance-notice ${
+              receipt.distanceAllowance.emergency ? 'emergency'
+              : receipt.distanceAllowance.allowed  ? 'allowed' : 'denied'
+            }`}>
+              <span>
+                {receipt.distanceAllowance.emergency ? '⚠️'
+                  : receipt.distanceAllowance.allowed ? '📍' : '🚫'}
+              </span>
+              <span>{receipt.distanceAllowance.reason}</span>
             </div>
-            <div className={ui.fuelBar}>
-              <div className={`${ui.fuelBarFill} ${barColor}`} style={{width:`${pct}%`}} />
-            </div>
-          </div>
+          )}
         </div>
       )}
     </AppShell>

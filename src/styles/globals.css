@@ -262,3 +262,409 @@ select.filter-control option {
   background-color: var(--surface);
   color: var(--text);
 }
+/* ========================
+   MAP PICKER
+======================== */
+.map-picker-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+.map-search-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.map-search-row .form-control { flex: 1; }
+.leaflet-map {
+  height: 320px;
+  width: 100%;
+  z-index: 0;
+}
+.map-coords {
+  padding: 7px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+}
+
+/* Override Leaflet popup/control to match dark theme */
+.leaflet-container {
+  background: #0b1624;
+  font-family: var(--font-body);
+}
+.leaflet-control-attribution {
+  background: rgba(6,12,20,0.8) !important;
+  color: var(--text3) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--text3) !important; }
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--surface2) !important;
+  color: var(--accent) !important;
+}
+
+/* ========================
+   PUMP EMPLOYEE PANEL
+======================== */
+.pump-emp-panel {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.pump-emp-toggle {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: var(--font-head);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition);
+}
+.pump-emp-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pump-emp-body {
+  margin-top: 8px;
+  animation: fadeIn 0.2s ease;
+}
+.pump-emp-form {
+  display: flex;
+  flex-direction: column  ;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.pump-emp-form .form-control {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+.pump-emp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.pump-emp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* ========================
+   DISTANCE ALLOWANCE NOTICE
+======================== */
+.distance-notice {
+  margin-top: 0.8rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  border: 1px solid;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.distance-notice.allowed {
+  background: rgba(0,230,118,0.07);
+  border-color: var(--success);
+  color: var(--success);
+}
+.distance-notice.denied {
+  background: rgba(255,59,92,0.07);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.distance-notice.emergency {
+  background: rgba(255,214,0,0.07);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+/* ========================
+   DISPENSE — DETECT STATUS
+======================== */
+.detect-status {
+  margin-top: 6px;
+  padding: 7px 12px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+}
+.detect-status.detecting {
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  color: var(--text2);
+}
+.detect-status.detected {
+  background: rgba(0, 230, 118, 0.07);
+  border: 1px solid rgba(0, 230, 118, 0.25);
+  color: var(--success);
+  font-size: 0.88rem;
+}
+.detect-status.detected strong { color: var(--success); }
+.detect-source {
+  color: var(--text2);
+  font-size: 0.72rem;
+}
+.detect-status.not-found {
+  background: rgba(255, 214, 0, 0.06);
+  border: 1px solid rgba(255, 214, 0, 0.2);
+  color: var(--warning);
+}
+
+/* Locked select when class auto-detected */
+select.form-control.class-locked {
+  border-color: rgba(0, 230, 118, 0.35);
+  color: var(--success);
+}
+
+/* Override button next to label */
+.override-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all var(--transition);
+  vertical-align: middle;
+}
+.override-btn:hover {
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+
+/* Pump banner */
+.pump-banner {
+  background: rgba(240, 165, 0, 0.07);
+  border: 1px solid rgba(240, 165, 0, 0.25);
+  border-radius: 6px;
+  padding: 8px 14px;
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pump-banner-loc {
+  color: var(--text2);
+}
+/* ========================
+   PUMP GRID FIX
+======================== */
+.pump-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.pump-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: border-color var(--transition);
+}
+
+.pump-card.online  { border-left: 3px solid var(--success); }
+.pump-card.offline { border-left: 3px solid var(--danger);  opacity: 0.75; }
+.pump-card:hover   { border-color: var(--accent); }
+
+.pump-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.pump-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-head);
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  color: var(--text2);
+}
+
+.pump-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pump-dot.online  { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 2s infinite; }
+.pump-dot.offline { background: var(--danger); }
+
+.pump-name {
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.pump-meta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+.btn-sm,.btn-amber{
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-dim);
+    color: var(--text2);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 3px;
+}
+.btn-amber:disabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-sm:hover,.btn-amber:hover{
+
+
+  border: 1px solid var(--accent);
+  color: var(--accent);
+;
+}
+form:has(.btn-amber:active)>:not(.btn-amber){
+
+  transform: scale(.99);
+ filter: brightness(.8);  
+  transition: all .3s ease;
+
+}
+/* ========================
+   RECEIPT
+======================== */
+.receipt {
+  margin-top: 1.5rem;
+  border: 1px solid rgba(0, 230, 118, 0.25);
+  border-radius: var(--radius);
+  background: rgba(0, 230, 118, 0.04);
+  overflow: hidden;
+}
+
+.receipt.rejected {
+  border-color: rgba(255, 59, 92, 0.25);
+  background: rgba(255, 59, 92, 0.04);
+}
+
+.receipt-title {
+  padding: 14px 20px;
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.receipt:not(.rejected) .receipt-title { color: var(--success); }
+.receipt.rejected       .receipt-title { color: var(--danger);  }
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0;
+}
+
+.receipt-item {
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.receipt-item:nth-child(even) {
+  border-right: none;
+}
+
+/* Last row — no bottom border */
+.receipt-item:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+
+/* Transaction ID spans full width */
+.receipt-item:first-child {
+  grid-column: 1 / -1;
+  border-right: none;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.receipt-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+
+.receipt-value {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* Highlight amount */
+.receipt-item:nth-child(4) .receipt-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent2);
+}
+
+/* Highlight daily usage */
+.receipt-item:nth-child(7) .receipt-value {
+  color: var(--accent);
+}
+
+/* Rejected — dim the amount */
+.receipt.rejected .receipt-item:nth-child(4) .receipt-value {
+  color: var(--danger);
+}

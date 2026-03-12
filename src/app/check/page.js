@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import AppShell from '../../components/layout/AppShell';
 import { parseRegistration, getInputHint, BRTA_CLASS_MAP } from '../../lib/bdRegistration';
+import { normalizeRegistration } from '@/lib/utils';
 import '@/styles/globals.css';
 const VEHICLE_CLASSES = ['Motorcycle','Private Car','Pickup / SUV','Microbus','Minibus','Bus','Light Truck','Heavy Truck','Agricultural','Emergency'];
 
@@ -31,23 +32,26 @@ export default function CheckPage() {
   const [parsed, setParsed] = useState(null);   // full parsed result
 
   // Live parse as user types
-  useEffect(() => {
-    const p = parseRegistration(reg);
-    setParsed(p);
-    const h = getInputHint(reg);
-    setHint(h);
-    // Auto-fill class if we got a valid parse
-    if (p?.isValid && p.suggestedSystemClass && !cls) {
-      setCls(p.suggestedSystemClass);
-    }
-  }, [reg]);
+ useEffect(() => {
+  const p = parseRegistration(reg);
+  setParsed(p);
+  const h = getInputHint(reg);
+  setHint(h);
+
+  // Auto-fill class — use hint if full parse didn't work
+  if (p?.isValid && p.suggestedSystemClass) {
+    setCls(p.suggestedSystemClass);
+  } else if (h?.systemClass && !cls) {
+    setCls(h.systemClass);
+  }
+}, [reg]);
 
   async function handleCheck(e) {
     e.preventDefault();
     if (!reg.trim()) return;
     setLoading(true); setError(''); setResult(null);
     try {
-      const params = new URLSearchParams({ reg: reg.trim() });
+     const params = new URLSearchParams({ reg: normalizeRegistration(reg) });
       if (cls) params.set('class', cls);
       const res = await fetch(`/api/vehicles/check?${params}`);
       const data = await res.json();

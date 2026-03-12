@@ -10,11 +10,10 @@ export async function GET(request) {
   await connectDB();
   const pumps = await Pump.find().sort({ createdAt: 1 });
 
-  // Add today's totals
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todayStats = await Transaction.aggregate([
     { $match: { status: 'valid', createdAt: { $gte: todayStart } } },
-    { $group: { _id: '$pumpId', todayTotal: { $sum: '$amountLiters' }, count: { $sum: 1 } } }
+    { $group: { _id: '$pumpId', todayTotal: { $sum: '$amountLiters' }, count: { $sum: 1 } } },
   ]);
   const statsMap = {};
   todayStats.forEach(s => { statsMap[s._id.toString()] = s; });
@@ -32,8 +31,8 @@ export async function POST(request) {
   const user = await requireAuth(request, ['govt']);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   await connectDB();
-  const { name, location } = await request.json();
+  const { name, location, lat, lng } = await request.json();
   if (!name || !location) return NextResponse.json({ error: 'name and location required' }, { status: 400 });
-  const pump = await Pump.create({ name, location });
+  const pump = await Pump.create({ name, location, lat: lat || null, lng: lng || null });
   return NextResponse.json({ pump }, { status: 201 });
 }

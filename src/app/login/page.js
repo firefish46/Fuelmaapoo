@@ -10,20 +10,22 @@ export default function LoginPage() {
   const toast = useToast();
   const router = useRouter();
   const [tab, setTab] = useState('govt');
-  const [form, setForm] = useState({ username: 'govt_admin', password: 'admin123' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const switchTab = (t) => {
     setTab(t);
     setError('');
-    setForm(t === 'govt'
-      ? { username: 'govt_admin', password: 'admin123' }
-      : { username: 'pump_op1',   password: 'pump123'  });
+    setForm({ username: '', password: '' });
   };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
+    if (!form.username || !form.password) {
+      setError('Please enter username and password');
+      return;
+    }
     setError(''); setLoading(true);
     try {
       await login(form.username, form.password);
@@ -36,21 +38,29 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
+     
       <div className={styles.wrap}>
         <div className={styles.header}>
           <div className={styles.logoRow}>
-            <div className={styles.logoIcon}>⛽</div>
-            <h1 className={styles.title}>National<span>Fuel</span></h1>
+          {/*<div className={styles.logoIcon}><i className="fa-solid fa-gas-pump"></i></div>*/}
+            <h1 className={styles.title}><i className="fa-solid fa-gas-pump"></i>Fuel<span>Mapoo</span></h1>
+            <p className={styles.subtitle}> 🇧🇩</p>
           </div>
-          <p className={styles.subtitle}>Supply Monitoring System</p>
+          <p className={styles.subtitle}> Supply Monitoring System</p>
         </div>
 
         <div className={styles.box}>
           <div className={styles.tabs}>
-            <button className={`${styles.tab} ${tab === 'govt' ? styles.tabActive : ''}`} onClick={() => switchTab('govt')}>
+            <button
+              className={`${styles.tab} ${tab === 'govt' ? styles.tabActive : ''}`}
+              onClick={() => switchTab('govt')}
+            >
               ▲ Govt Admin
             </button>
-            <button className={`${styles.tab} ${styles.tabAmber} ${tab === 'pump' ? styles.tabActive : ''}`} onClick={() => switchTab('pump')}>
+            <button
+              className={`${styles.tab} ${styles.tabAmber} ${tab === 'pump' ? styles.tabActive : ''}`}
+              onClick={() => switchTab('pump')}
+            >
               ⛽ Pump Operator
             </button>
           </div>
@@ -62,8 +72,9 @@ export default function LoginPage() {
                 className={styles.input}
                 value={form.username}
                 onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-                placeholder="Enter username"
+                placeholder={tab === 'govt' ? 'Govt username' : 'Operator username'}
                 autoComplete="username"
+                autoFocus
               />
             </div>
             <div className={styles.formGroup}>
@@ -89,9 +100,6 @@ export default function LoginPage() {
           </form>
 
           {error && <p className={styles.error}>✕ {error}</p>}
-          <p className={styles.demo}>
-            Demo: {tab === 'govt' ? 'govt_admin / admin123' : 'pump_op1 / pump123'}
-          </p>
         </div>
       </div>
     </div>
